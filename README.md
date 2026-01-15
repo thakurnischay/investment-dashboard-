@@ -115,6 +115,27 @@ mern stack project/
 - Make sure MongoDB is running for full functionality
 - Update `MONGO_URI` in `.env` to use MongoDB Atlas if preferred
 
+## Deployment
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+### Quick Deploy Options:
+
+1. **Backend**: Deploy to [Render](https://render.com) or [Railway](https://railway.app)
+2. **Frontend**: Deploy to [Vercel](https://vercel.com) or [Netlify](https://netlify.com)
+3. **Database**: Use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (free tier available)
+
+### Environment Variables for Production:
+
+**Backend:**
+- `MONGO_URI` - MongoDB connection string (use MongoDB Atlas for production)
+- `JWT_SECRET` - Secret key for JWT tokens (use a strong random string)
+- `FRONTEND_URL` - Your frontend deployment URL
+- `PORT` - Server port (usually auto-assigned by platform)
+
+**Frontend:**
+- `VITE_API_BASE_URL` - Your backend API URL (e.g., `https://your-api.onrender.com/api`)
+
 ## License
 
 ISC
