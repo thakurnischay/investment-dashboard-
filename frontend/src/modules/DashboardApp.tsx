@@ -101,6 +101,7 @@ export const DashboardApp: React.FC = () => {
       const body = await res.json();
       if (!res.ok) throw new Error(body.message || 'Failed to fetch dashboard');
       setDashboard(body);
+      setError(null);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch dashboard');
     } finally {
@@ -118,7 +119,8 @@ export const DashboardApp: React.FC = () => {
       if (!res.ok) throw new Error(body.message || 'Failed to fetch referral tree');
       setReferralTree(body);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch referral tree');
+      // Silently fail for referral tree
+      console.error('Failed to fetch referral tree:', err);
     }
   };
 
@@ -129,36 +131,49 @@ export const DashboardApp: React.FC = () => {
     setReferralTree([]);
   };
 
+  const getStatusBadgeClass = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('active') || statusLower.includes('running')) {
+      return 'status-badge active';
+    }
+    if (statusLower.includes('complete') || statusLower.includes('finished')) {
+      return 'status-badge completed';
+    }
+    return 'status-badge pending';
+  };
+
   if (!token) {
     return (
       <div className="app-container">
-        <h1>Investment Dashboard Login</h1>
+        <h1>💼 Investment Dashboard</h1>
         <form onSubmit={handleLogin} className="card form-card">
           <label>
-            Email
+            📧 Email Address
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
               required
             />
           </label>
           <label>
-            Password
+            🔒 Password
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
               required
             />
           </label>
           <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? '⏳ Logging in...' : '🚀 Login'}
           </button>
           {error && <p className="error">{error}</p>}
         </form>
         <p className="hint">
-          Use any user created via the `/api/auth/register` endpoint (e.g. using Postman).
+          💡 Don't have an account? Register via the API endpoint or contact your administrator.
         </p>
       </div>
     );
@@ -167,103 +182,222 @@ export const DashboardApp: React.FC = () => {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Investment Dashboard</h1>
-        <button onClick={handleLogout}>Logout</button>
+        <div>
+          <h1>💼 Investment Dashboard</h1>
+          {dashboard && (
+            <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Welcome back, <strong>{dashboard.user.name}</strong> • Balance: ${dashboard.user.walletBalance.toFixed(2)}
+            </p>
+          )}
+        </div>
+        <button onClick={handleLogout}>🚪 Logout</button>
       </header>
 
-      {loading && <p>Loading...</p>}
-      {error && <p className="error">{error}</p>}
+      {loading && !dashboard && (
+        <div className="loading">Loading your dashboard</div>
+      )}
+
+      {error && (
+        <div className="error-message">
+          ⚠️ {error}
+        </div>
+      )}
 
       {dashboard && (
         <>
           <section className="grid">
             <div className="card">
-              <h2>Total Investments</h2>
+              <h2>💰 Total Investments</h2>
               <p className="number">${dashboard.totals.totalInvestments.toFixed(2)}</p>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                All-time investment total
+              </p>
             </div>
             <div className="card">
-              <h2>Total ROI</h2>
+              <h2>📈 Total ROI</h2>
               <p className="number">${dashboard.totals.totalRoi.toFixed(2)}</p>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Cumulative returns
+              </p>
             </div>
             <div className="card">
-              <h2>Level Income</h2>
+              <h2>🎯 Level Income</h2>
               <p className="number">${dashboard.totals.totalLevelIncome.toFixed(2)}</p>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Referral earnings
+              </p>
             </div>
             <div className="card">
-              <h2>Today&apos;s ROI</h2>
+              <h2>✨ Today&apos;s ROI</h2>
               <p className="number">${dashboard.totals.todayRoi.toFixed(2)}</p>
+              <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Daily earnings
+              </p>
             </div>
           </section>
 
-          <section className="card">
-            <h2>Investments</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Plan</th>
-                  <th>Amount</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboard.investments.map((inv) => (
-                  <tr key={inv._id}>
-                    <td>{inv.plan}</td>
-                    <td>${inv.amount.toFixed(2)}</td>
-                    <td>{new Date(inv.startDate).toLocaleDateString()}</td>
-                    <td>{new Date(inv.endDate).toLocaleDateString()}</td>
-                    <td>{inv.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="card">
-            <h2>Level Income</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Level</th>
-                  <th>From User</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboard.levelIncome.map((li, idx) => (
-                  <tr key={`${li.fromUser}-${li.date}-${idx}`}>
-                    <td>{li.level}</td>
-                    <td>{li.fromUser}</td>
-                    <td>${li.amount.toFixed(2)}</td>
-                    <td>{new Date(li.date).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="card">
-            <h2>Referral Tree</h2>
-            {referralTree.length === 0 && <p>No referrals yet.</p>}
-            {referralTree.map((level) => (
-              <div key={level.level} className="referral-level">
-                <h3>Level {level.level}</h3>
-                <ul>
-                  {level.users.map((u) => (
-                    <li key={u._id}>
-                      <strong>{u.name}</strong> ({u.email}) - Code: {u.referralCode}
-                    </li>
-                  ))}
-                </ul>
+          <section className="card" style={{ marginBottom: '2rem' }}>
+            <h2>📊 Your Investments</h2>
+            {dashboard.investments.length === 0 ? (
+              <div className="empty-state">
+                <p>No investments yet. Start investing to see your portfolio here!</p>
               </div>
-            ))}
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Plan</th>
+                      <th>Amount</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.investments.map((inv) => (
+                      <tr key={inv._id}>
+                        <td>
+                          <strong>{inv.plan}</strong>
+                        </td>
+                        <td>
+                          <strong style={{ color: 'var(--primary-light)' }}>
+                            ${inv.amount.toFixed(2)}
+                          </strong>
+                        </td>
+                        <td>{new Date(inv.startDate).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}</td>
+                        <td>{new Date(inv.endDate).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}</td>
+                        <td>
+                          <span className={getStatusBadgeClass(inv.status)}>
+                            {inv.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="card" style={{ marginBottom: '2rem' }}>
+            <h2>💵 Level Income History</h2>
+            {dashboard.levelIncome.length === 0 ? (
+              <div className="empty-state">
+                <p>No level income recorded yet. Refer users to start earning!</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Level</th>
+                      <th>From User</th>
+                      <th>Amount</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.levelIncome.map((li, idx) => (
+                      <tr key={`${li.fromUser}-${li.date}-${idx}`}>
+                        <td>
+                          <span style={{ 
+                            display: 'inline-block',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            background: 'var(--gradient-1)',
+                            color: 'white',
+                            textAlign: 'center',
+                            lineHeight: '32px',
+                            fontWeight: 'bold',
+                            fontSize: '0.875rem'
+                          }}>
+                            {li.level}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{li.fromUser}</strong>
+                        </td>
+                        <td>
+                          <strong style={{ color: 'var(--success)' }}>
+                            +${li.amount.toFixed(2)}
+                          </strong>
+                        </td>
+                        <td>{new Date(li.date).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="card">
+            <h2>🌳 Referral Tree</h2>
+            {referralTree.length === 0 ? (
+              <div className="empty-state">
+                <p>No referrals yet. Share your referral code to grow your network!</p>
+              </div>
+            ) : (
+              referralTree.map((level) => (
+                <div key={level.level} className="referral-level">
+                  <h3>
+                    Level {level.level} 
+                    <span style={{ 
+                      marginLeft: '1rem', 
+                      fontSize: '0.875rem', 
+                      color: 'var(--text-muted)',
+                      fontWeight: 'normal'
+                    }}>
+                      ({level.users.length} {level.users.length === 1 ? 'user' : 'users'})
+                    </span>
+                  </h3>
+                  <ul>
+                    {level.users.map((u) => (
+                      <li key={u._id}>
+                        <strong>{u.name}</strong>
+                        <span style={{ 
+                          display: 'block', 
+                          fontSize: '0.875rem', 
+                          color: 'var(--text-secondary)',
+                          marginTop: '0.25rem'
+                        }}>
+                          {u.email}
+                        </span>
+                        <span style={{ 
+                          display: 'inline-block',
+                          marginTop: '0.5rem',
+                          padding: '0.25rem 0.75rem',
+                          background: 'var(--bg-primary)',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          color: 'var(--primary-light)',
+                          fontFamily: 'monospace'
+                        }}>
+                          Code: {u.referralCode}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            )}
           </section>
         </>
       )}
     </div>
   );
 };
-
